@@ -2,7 +2,7 @@
 [GaitPart](https://openaccess.thecvf.com/content_CVPR_2020/papers/Fan_GaitPart_Temporal_Part-Based_Model_for_Gait_Recognition_CVPR_2020_paper.pdf) is a CVPR 2020 paper.
 
 #### NOTE
-This repo is not official, but almost reproduces the same recognition accuracy on CASIA-B dataset like the paper said.
+This repo is not official, but almost reproduces the same recognition accuracy on CASIA-B dataset like the paper does.
 This repo is based on [GaitSet](https://github.com/AbnerHqC/GaitSet)
 
 ## Prerequisites
