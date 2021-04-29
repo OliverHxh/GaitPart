@@ -58,54 +58,41 @@ class MCM(nn.Module):
         super(MCM, self).__init__()
         self.p = p
         self.div = div
-        self.conv_list_1 = []
-        self.conv_list_2 = []
-        for i in range(self.p):
-            conv1 = nn.Sequential(
-                nn.Conv1d(in_channels, in_channels // self.div, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.Conv1d(in_channels // self.div, in_channels, kernel_size=1, padding=0),
-            )
-            
-            conv_name = 'self.conv1_' + str(i)
-            exec("{} = conv1".format(conv_name))
-            
-            conv2 = nn.Sequential(
-                nn.Conv1d(in_channels, in_channels // self.div, kernel_size=3, padding=1, stride=1),
-                nn.ReLU(),
-                nn.Conv1d(in_channels // self.div, in_channels, kernel_size=3, padding=1, stride=1),
-            )
-            
-            conv_name = 'self.conv2_' + str(i)
-            exec("{} = conv2".format(conv_name))
-
+        
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(in_channels*self.p, in_channels*self.p//self.div, kernel_size=3, padding=1, bias=False,groups=self.p),
+            nn.ReLU(),
+            nn.Conv1d(in_channels*self.p//self.div, out_channels*self.p, kernel_size=1, padding=0, bias=False,groups=self.p),
+            nn.Sigmoid())
+        
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(in_channels*self.p, in_channels*self.p//self.div, kernel_size=3, padding=1, bias=False,groups=self.p),
+            nn.ReLU(),
+            nn.Conv1d(in_channels*self.p//self.div, out_channels*self.p, kernel_size=3, padding=1, bias=False,groups=self.p),
+            nn.Sigmoid())
+        
+        self.leaky_relu = nn.LeakyReLU()
+        
         self.max_pool1d_3 = nn.MaxPool1d(kernel_size=3, padding=1, stride=1)
         self.avg_pool1d_3 = nn.AvgPool1d(kernel_size=3, padding=1, stride=1)
         self.max_pool1d_5 = nn.MaxPool1d(kernel_size=5, padding=2, stride=1)
         self.avg_pool1d_5 = nn.AvgPool1d(kernel_size=5, padding=2, stride=1)
 
     def forward(self, x):
-        self.conv_list_1 = [self.conv1_0, self.conv1_1, self.conv1_2, self.conv1_3, self.conv1_4, self.conv1_5, self.conv1_6, self.conv1_7, self.conv1_8, self.conv1_9, self.conv1_10, self.conv1_11, self.conv1_12, self.conv1_13, self.conv1_14, self.conv1_15]
-        self.conv_list_2 = [self.conv2_0, self.conv2_1, self.conv2_2, self.conv2_3, self.conv2_4, self.conv2_5, self.conv2_6, self.conv2_7, self.conv2_8, self.conv2_9, self.conv2_10, self.conv2_11, self.conv2_12, self.conv2_13, self.conv2_14, self.conv2_15]
         n, s, c, p = x.size()
-        out_list = []
-        for i in range(self.p):
-            # MTB1
-            x_part = x[:,:,:,i].permute(0, 2, 1).contiguous()
-            mtb1_attention = self.conv_list_1[i](x_part).sigmoid()
-            tmp_out_1 = self.max_pool1d_3(x_part) + self.avg_pool1d_3(x_part)
-            out_1 = tmp_out_1 * mtb1_attention
-            
-            # MTB2
-            mtb2_attention = self.conv_list_2[i](x_part).sigmoid()
-            tmp_out_2 = self.max_pool1d_5(x_part) + self.avg_pool1d_5(x_part)
-            out_2 = tmp_out_2 * mtb2_attention
-
-            out = (out_1 + out_2).max(2)[0].unsqueeze(-1)
-            out_list.append(out)
-
-        out = torch.cat(out_list, 2).permute(2, 0, 1).contiguous()
-        return out
+        x_in = x.permute(0, 3, 2, 1).contiguous().view(n, p*c, s)
+        
+        mtb1_attention = self.conv1(x_in)
+        tmp_out_1 = self.max_pool1d_3(x_in) + self.avg_pool1d_3(x_in)
+        out_1 = tmp_out_1 * mtb1_attention
+        
+        mtb2_attention = self.conv2(x_in)
+        tmp_out_2 = self.max_pool1d_5(x_in) + self.avg_pool1d_5(x_in)
+        out_2 = tmp_out_2 * mtb2_attention
+        
+        out = self.leaky_relu(out_1 + out_2 + x_in).max(-1)[0].view(n, p, c).contiguous()
+        
+        return out.permute(0, 2, 1).contiguous()
 
 class SetBlock(nn.Module):
     def __init__(self, forward_block, pooling=False):

@@ -20,7 +20,7 @@ class PartNet(nn.Module):
         self.set_layer5 = SetBlock(FCONV_8(_set_channels[1], _set_channels[2], p=8))
         self.set_layer6 = SetBlock(FCONV_8(_set_channels[2], _set_channels[2], p=8))
 
-        self.MCM = MCM(_set_channels[2], _set_channels[2], p=16, div=4)
+        self.MCM = MCM(_set_channels[2], _set_channels[2], p=16, div=16)
 
         self.bin_num = [16]
         self.fc_bin = nn.Parameter(
