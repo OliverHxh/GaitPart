@@ -92,7 +92,7 @@ class MCM(nn.Module):
         
         out = self.leaky_relu(out_1 + out_2 + x_in).max(-1)[0].view(n, p, c).contiguous()
         
-        return out.permute(0, 2, 1).contiguous()
+        return out.permute(1, 0, 2).contiguous()
 
 class SetBlock(nn.Module):
     def __init__(self, forward_block, pooling=False):
